@@ -81,7 +81,7 @@ def _backup(loop):
         _logger.info('Backed up successfully!')
         post_datadog_event(
             'RethinkDB Backup Success',
-            'RethinkDB was successfully backed up', 'info')
+            'RethinkDB was successfully backed up', 'success')
     else:
         _logger.error('Failed to back up!')
         post_datadog_event(

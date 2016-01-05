@@ -15,4 +15,4 @@ RUN rm -rf requirements.txt
 
 COPY ./schedule-rethinkdb-backup.py /app/
 
-CMD python3 schedule-rethinkdb-backup.py
+CMD python3 /app/schedule-rethinkdb-backup.py

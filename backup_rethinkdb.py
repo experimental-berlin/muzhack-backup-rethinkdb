@@ -44,8 +44,8 @@ def backup_rethinkdb(rethinkdb_host, s3_bucket, remove_local_backup):
     if s3_bucket:
         _logger.info('Uploading \'{}\' to S3 bucket \'{}\'...'.format(filename,
               s3_bucket))
-        access_key_id = get_environment_value('AWS_ACCESS_KEY_ID')
-        secret = get_environment_value('AWS_SECRET_ACCESS_KEY')
+        access_key_id = get_environment_value('RETHINKDB_BACKUP_AWS_ACCESS_KEY_ID')
+        secret = get_environment_value('RETHINKDB_BACKUP_AWS_SECRET_ACCESS_KEY')
         _logger.debug('Using AWS ACCESS KEY ID {}'.format(access_key_id)) 
         s3_client = boto3.client('s3', region_name='eu-central-1',
                                  aws_access_key_id=access_key_id,

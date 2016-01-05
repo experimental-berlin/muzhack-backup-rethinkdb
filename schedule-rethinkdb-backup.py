@@ -61,7 +61,7 @@ def _backup(loop):
         try:
             backup_rethinkdb(
                 get_environment_value('RETHINKDB_HOST'),
-                get_environment_value('S3_BUCKET'), True)
+                get_environment_value('RETHINKDB_BACKUP_S3_BUCKET'), True)
         except Exception as err:
             import traceback
             traceback.print_exc()

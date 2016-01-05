@@ -49,7 +49,7 @@ def _schedule_backup(loop):
 
     _logger.debug(
         'Delaying for {} second(s) before backup'.format(desired_seconds))
-    loop.call_later(1, _backup, loop)
+    loop.call_later(desired_seconds, _backup, loop)
 
 
 def _backup(loop):
@@ -59,6 +59,7 @@ def _backup(loop):
 
 
     success = False
+    error = None
     for attempt in range(1, 4):
         now = datetime.now()
         _logger.info('Backup attempt #{} at {}...'.format(
@@ -68,6 +69,7 @@ def _backup(loop):
                 get_environment_value('RETHINKDB_HOST'),
                 get_environment_value('RETHINKDB_BACKUP_S3_BUCKET'), True)
         except Exception as err:
+            error = err
             import traceback
             traceback.print_exc()
             _logger.warn('Backup attempt #{} failed'.format(attempt))
@@ -84,14 +86,14 @@ def _backup(loop):
         _logger.error('Failed to back up!')
         post_datadog_event(
             'RethinkDB Backup Failure',
-            'Failed to back up RethinkDB: {}'.format(err), 'error')
+            'Failed to back up RethinkDB: {}'.format(error), 'error')
 
     _logger.debug('Scheduling next backup')
     _schedule_backup(loop)
 
 
 def _main():
-    datadog.api.initialize(
+    datadog.initialize(
         api_key=get_environment_value('DATADOG_API_KEY'),
         app_key=get_environment_value('DATADOG_APP_KEY')
     )

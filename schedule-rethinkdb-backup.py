@@ -48,7 +48,7 @@ def _schedule_backup(loop):
 
     _logger.debug(
         'Delaying for {} second(s) before backup'.format(desired_seconds))
-    loop.call_later(desired_seconds, _backup, loop)
+    loop.call_later(1, _backup, loop)
 
 
 def _backup(loop):
@@ -59,7 +59,9 @@ def _backup(loop):
         _logger.info('Backup attempt #{} at {}...'.format(
             attempt, now.strftime('%Y-%m-%d %H:%M:%S')))
         try:
-            backup_rethinkdb(get_environment_value('S3_BUCKET'), True)
+            backup_rethinkdb(
+                get_environment_value('RETHINKDB_HOST'),
+                get_environment_value('S3_BUCKET'), True)
         except Exception as err:
             import traceback
             traceback.print_exc()

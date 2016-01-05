@@ -14,5 +14,6 @@ RUN pip3 install -r requirements.txt
 RUN rm -rf requirements.txt
 
 COPY ./schedule-rethinkdb-backup.py /app/
+COPY ./backup_rethinkdb.py /app/
 
 CMD python3 /app/schedule-rethinkdb-backup.py

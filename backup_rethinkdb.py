@@ -24,20 +24,20 @@ def get_environment_value(key):
     return value
 
 
-def backup_rethinkdb(s3_bucket, remove_local_backup):
+def backup_rethinkdb(rethinkdb_host, s3_bucket, remove_local_backup):
     date_time_str = datetime.utcnow().strftime('%Y-%m-%dT%H:%M')
     filename = 'rethinkdb-dump-{}.tar.gz'.format(date_time_str)
     if os.path.exists(filename):
         os.remove(filename)
 
-    command = ['rethinkdb', 'dump', '-f', filename]
+    command = ['rethinkdb', 'dump', '-c', rethinkdb_host, '-f', filename]
     auth_key = os.environ.get('RETHINKDB_AUTH_KEY')
     if auth_key:
         _logger.info('Using RethinkDB authentication key')
         command.extend(['-a', auth_key, ])
     else:
         _logger.info('Not using any RethinkDB authentication key')
-    _logger.info('Backing up database to {}...'.format(filename))
+    _logger.info('Backing up database at {} to {}...'.format(rethinkdb_host, filename))
     subprocess.check_call(command, stdout=subprocess.PIPE)
     _logger.debug('Finished making backup file')
 
@@ -71,12 +71,13 @@ def _main():
 
     parser = argparse.ArgumentParser(
         description='Back up local RethinkDB instance')
+    parser.add_argument('--host', default='localhost', help='Specify RethinkDB host')
     parser.add_argument('--s3-bucket', default=None, help='Specify S3 bucket')
     parser.add_argument('--remove', action='store_true', default=False,
                         help='Remove backup archive when done?')
     args = parser.parse_args()
 
-    backup_rethinkdb(args.s3_bucket, args.remove)
+    backup_rethinkdb(host, args.s3_bucket, args.remove)
 
 
 if __name__ == '__main__':

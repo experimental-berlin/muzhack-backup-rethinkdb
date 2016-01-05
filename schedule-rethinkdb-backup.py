@@ -7,6 +7,7 @@ import sys
 import logging
 import contextlib
 import time
+import datadog.api
 
 from backup_rethinkdb import backup_rethinkdb, get_environment_value
 
@@ -53,6 +54,10 @@ def _schedule_backup(loop):
 
 def _backup(loop):
     """Perform actual backup."""
+    def post_datadog_event(title, text, alert_type):
+        datadog.api.Event.create(title=title, text=text, alert_type=alert_type)
+
+
     success = False
     for attempt in range(1, 4):
         now = datetime.now()
@@ -72,14 +77,25 @@ def _backup(loop):
             break
     if success:
         _logger.info('Backed up successfully!')
+        post_datadog_event(
+            'RethinkDB Backup Success',
+            'RethinkDB was successfully backed up', 'info')
     else:
         _logger.error('Failed to back up!')
+        post_datadog_event(
+            'RethinkDB Backup Failure',
+            'Failed to back up RethinkDB: {}'.format(err), 'error')
 
     _logger.debug('Scheduling next backup')
     _schedule_backup(loop)
 
 
 def _main():
+    datadog.api.initialize(
+        api_key=get_environment_value('DATADOG_API_KEY'),
+        app_key=get_environment_value('DATADOG_APP_KEY')
+    )
+
     with contextlib.closing(asyncio.get_event_loop()) as loop:
         _schedule_backup(loop)
         try:

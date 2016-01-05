@@ -6,18 +6,24 @@ from datetime import datetime, date, timedelta
 import sys
 import logging
 import contextlib
+import time
+
+from backup_rethinkdb import backup_rethinkdb, get_environment_value
 
 
 def _configure_logging():
-    logging.getLogger().setLevel(logging.WARNING)
-    logger = logging.getLogger('app')
-    logger.setLevel(logging.DEBUG)
-
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.WARNING)
     ch = logging.StreamHandler()
     formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)
-    logger.addHandler(ch)
+    root_logger.addHandler(ch)
+
+    logger = logging.getLogger('app')
+    log_level = logging.DEBUG
+    logger.setLevel(log_level)
+    logging.getLogger('backup_rethinkdb').setLevel(log_level)
 
     return logger
 
@@ -47,10 +53,26 @@ def _schedule_backup(loop):
 
 def _backup(loop):
     """Perform actual backup."""
-    now = datetime.now()
-    _logger.info('Backing up at {}...'.format(
-        now.strftime('%Y-%m-%d %H:%M:%S')))
-    _logger.info('Backed up successfully!')
+    success = False
+    for attempt in range(1, 4):
+        now = datetime.now()
+        _logger.info('Backup attempt #{} at {}...'.format(
+            attempt, now.strftime('%Y-%m-%d %H:%M:%S')))
+        try:
+            backup_rethinkdb(get_environment_value('S3_BUCKET'), True)
+        except Exception as err:
+            import traceback
+            traceback.print_exc()
+            _logger.warn('Backup attempt #{} failed'.format(attempt))
+            time.sleep(1)
+        else:
+            success = True
+            break
+    if success:
+        _logger.info('Backed up successfully!')
+    else:
+        _logger.error('Failed to back up!')
+
     _logger.debug('Scheduling next backup')
     _schedule_backup(loop)
 

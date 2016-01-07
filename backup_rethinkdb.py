@@ -37,21 +37,32 @@ def backup_rethinkdb(rethinkdb_host, s3_bucket, remove_local_backup):
         command.extend(['-a', auth_key, ])
     else:
         _logger.info('Not using any RethinkDB authentication key')
-    _logger.info('Backing up database at {} to {}...'.format(rethinkdb_host, filename))
+    _logger.info(
+        'Backing up database at {} to {}...'.format(rethinkdb_host, filename))
     subprocess.check_call(command, stdout=subprocess.PIPE)
     _logger.debug('Finished making backup file')
 
     if s3_bucket:
-        _logger.info('Uploading \'{}\' to S3 bucket \'{}\'...'.format(filename,
-              s3_bucket))
-        access_key_id = get_environment_value('RETHINKDB_BACKUP_AWS_ACCESS_KEY_ID')
-        secret = get_environment_value('RETHINKDB_BACKUP_AWS_SECRET_ACCESS_KEY')
-        _logger.debug('Using AWS ACCESS KEY ID {}'.format(access_key_id)) 
+        _logger.info(
+            'Uploading \'{}\' to S3 bucket \'{}\'...'.format(
+                filename, s3_bucket))
+        access_key_id = get_environment_value(
+            'RETHINKDB_BACKUP_AWS_ACCESS_KEY_ID')
+        secret = get_environment_value(
+            'RETHINKDB_BACKUP_AWS_SECRET_ACCESS_KEY')
+        _logger.debug('Using AWS ACCESS KEY ID {}'.format(access_key_id))
         s3_client = boto3.client('s3', region_name='eu-central-1',
                                  aws_access_key_id=access_key_id,
                                  aws_secret_access_key=secret)
         s3_client.upload_file(filename, s3_bucket, filename)
-        # TODO: Implement deleting backups that are older than 100 days
+
+        retention_period = 100
+        bucket = s3_client.Bucket(args.s3_bucket)
+        for obj in bucket.objects.all():
+            gap = datetime.utcnow() - obj.last_modified
+            if gap.days > retention_period:
+                _info('Deleting \'{}\'...'.format(obj.key))
+                obj.delete()
 
     if remove_local_backup:
         os.remove(filename)
@@ -71,7 +82,8 @@ def _main():
 
     parser = argparse.ArgumentParser(
         description='Back up local RethinkDB instance')
-    parser.add_argument('--host', default='localhost', help='Specify RethinkDB host')
+    parser.add_argument(
+        '--host', default='localhost', help='Specify RethinkDB host')
     parser.add_argument('--s3-bucket', default=None, help='Specify S3 bucket')
     parser.add_argument('--remove', action='store_true', default=False,
                         help='Remove backup archive when done?')

@@ -4,7 +4,7 @@ import subprocess
 import argparse
 import os.path
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 import boto3
 import logging
 
@@ -57,12 +57,15 @@ def backup_rethinkdb(rethinkdb_host, s3_bucket, remove_local_backup):
         s3_client.upload_file(filename, s3_bucket, filename)
 
         retention_period = 100
-        bucket = s3_client.Bucket(args.s3_bucket)
-        for obj in bucket.objects.all():
-            gap = datetime.utcnow() - obj.last_modified
-            if gap.days > retention_period:
-                _info('Deleting \'{}\'...'.format(obj.key))
-                obj.delete()
+        resp = s3_client.list_objects(Bucket=s3_bucket)
+        now = datetime.now(timezone.utc)
+        for obj in [o for o in resp['Contents'] if o['Key'].startswith('rethinkdb-dump')]:
+            key = obj['Key']
+            last_modified = obj['LastModified']
+            gap = now - last_modified
+            if gap.days > retention_period or True:
+                _logger.info('Deleting \'{}\'...'.format(key))
+                s3_client.delete_object(Bucket=s3_bucket, Key=key)
 
     if remove_local_backup:
         os.remove(filename)
@@ -89,7 +92,7 @@ def _main():
                         help='Remove backup archive when done?')
     args = parser.parse_args()
 
-    backup_rethinkdb(host, args.s3_bucket, args.remove)
+    backup_rethinkdb(args.host, args.s3_bucket, args.remove)
 
 
 if __name__ == '__main__':

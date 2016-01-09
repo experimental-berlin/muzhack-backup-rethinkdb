@@ -59,7 +59,8 @@ def backup_rethinkdb(rethinkdb_host, s3_bucket, remove_local_backup):
         retention_period = 100
         resp = s3_client.list_objects(Bucket=s3_bucket)
         now = datetime.now(timezone.utc)
-        for obj in [o for o in resp['Contents'] if o['Key'].startswith('rethinkdb-dump')]:
+        for obj in [o for o in resp['Contents'] if o['Key'].startswith(
+                'rethinkdb-dump')]:
             key = obj['Key']
             last_modified = obj['LastModified']
             gap = now - last_modified

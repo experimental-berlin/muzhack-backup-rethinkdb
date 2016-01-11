@@ -59,13 +59,17 @@ def backup_rethinkdb(rethinkdb_host, s3_bucket, remove_local_backup):
         retention_period = 100
         resp = s3_client.list_objects(Bucket=s3_bucket)
         now = datetime.now(timezone.utc)
+        _logger.info('Pruning backups on S3 older than {} days...'.format(
+            retention_period))
         for obj in [o for o in resp['Contents'] if o['Key'].startswith(
                 'rethinkdb-dump')]:
             key = obj['Key']
             last_modified = obj['LastModified']
             gap = now - last_modified
-            if gap.days > retention_period or True:
-                _logger.info('Deleting \'{}\'...'.format(key))
+            if gap.days > retention_period:
+                _logger.info(
+                    'Pruning backup on S3 \'{}\' since its date is {}...'
+                    .format(key, last_modified))
                 s3_client.delete_object(Bucket=s3_bucket, Key=key)
 
     if remove_local_backup:
